@@ -22,8 +22,8 @@ public class PlayerController : NetworkBehaviour
     CharacterController characterController;
     Vector3 moveDirection = Vector3.zero;
 
-    [SerializeField]
-    private GameObject spherePrefab;  //Asigna el prefab de tu esfera en el Inspector de Unity.
+    //[SerializeField]
+    //private GameObject spherePrefab;  //Asigna el prefab de tu esfera en el Inspector de Unity.
     public Button spawnButton;  // Añade esta línea
 
 
@@ -41,6 +41,12 @@ public class PlayerController : NetworkBehaviour
     public bool canMove = true;
     public GameObject meshObject; // Crea una variable para el objeto hijo "Mesh"
 
+    [Header("Projectiles")]
+    [SerializeField]
+    private GameObject spherePrefab;
+
+    [SerializeField]
+    private Transform sphereSpawnPos;
     void Start()
     {
         
@@ -87,7 +93,10 @@ public class PlayerController : NetworkBehaviour
     {
         if (spherePrefab != null)
         {
-            Instantiate(spherePrefab, transform.position + transform.forward, Quaternion.identity);
+          
+            if (!base.IsOwner) return;
+            RPCSpawnSphere(transform, sphereSpawnPos.position, spherePrefab);
+           // Instantiate(spherePrefab, transform.position + transform.forward, Quaternion.identity);
         }
         else
         {
@@ -176,6 +185,24 @@ public class PlayerController : NetworkBehaviour
     private void RPCAniamtion(string parm, float val)
     {
         animator.SetFloat(parm, val);
+    }
+
+
+    [ServerRpc]
+    private void RPCSpawnSphere(Transform player, Vector3 offset, GameObject prefab)
+    {
+        GameObject sphere = Instantiate(prefab, offset, prefab.transform.rotation);
+        sphere.GetComponent<BallController>().MyPlayer = player;
+        //Spawn In Network to all Devices
+        ServerManager.Spawn(sphere);
+        RPCDisableBallForClients(sphere);
+    }
+    [ObserversRpc]
+    private void RPCDisableBallForClients(GameObject Ball)
+    {
+        //Disable ball for clients
+        if (IsServer) return;
+        Ball.SetActive(false);
     }
 }
 
